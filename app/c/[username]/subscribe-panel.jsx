@@ -1,18 +1,15 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
-// build the display for a tier at a given cycle, honoring the creator's chosen denomination
 function view(tier, cycle, rate) {
   const amt = tier[cycle];
   const isSats = tier.display === 'sats';
   let sats, cents;
   if (amt.sats != null) { sats = amt.sats; cents = Math.round((amt.sats / rate) * 100); }
   else { cents = amt.usd; sats = Math.round((amt.usd / 100) * rate); }
-
   const per = (isSats ? 'sats' : '') + (cycle === 'annual' ? '/yr' : '/mo');
   const primary = isSats ? sats.toLocaleString() : `$${(cents / 100).toFixed(0)}`;
   const approx = isSats ? `≈ $${(cents / 100).toFixed(2)}` : `≈ ${sats.toLocaleString()} sats`;
-
   let savenote = '';
   if (cycle === 'annual') {
     const m = tier.monthly;
@@ -24,72 +21,86 @@ function view(tier, cycle, rate) {
   }
   return { primary, per, approx, savenote, label: isSats ? `${primary} ${per}` : `${primary}${per}` };
 }
-
 function satsOf(tier, cycle, rate) {
   const amt = tier[cycle];
-  if (amt.sats != null) return amt.sats;
-  return Math.round((amt.usd / 100) * rate);
+  return amt.sats != null ? amt.sats : Math.round((amt.usd / 100) * rate);
 }
-
-const CONNECT_OPTIONS = [
-  ['nwc', 'Connect with Nostr Wallet Connect', 'Auto-renews within a budget you set. Cancel by revoking the connection.'],
-  ['intraledger', 'Authorize a capped Blink key', 'Blink to Blink, instant and free. Capped at your monthly limit.'],
-  ['reminder', 'Just remind me each cycle', 'No standing authorization. You approve every renewal by hand.'],
-];
+function fmtDate(iso) {
+  try { return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }); }
+  catch { return iso; }
+}
 
 export default function SubscribePanel({ creator, rate }) {
   const [cycle, setCycle] = useState('monthly');
   const [sel, setSel] = useState(null);
-  const [step, setStep] = useState('pick');
-  const [kind, setKind] = useState(null);
+  const [contact, setContact] = useState('');
+  const [step, setStep] = useState('pick');       // pick | pay | done
+  const [pay, setPay] = useState(null);           // { subId, paymentRequest, qr }
+  const [paidUntil, setPaidUntil] = useState(null);
+  const [error, setError] = useState('');
+  const poll = useRef(null);
 
-  async function confirm(k) {
-    setKind(k);
+  useEffect(() => () => clearInterval(poll.current), []);
+
+  async function startPay(tier) {
+    setSel(tier); setError(''); setPay(null); setStep('pay');
     try {
-      await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: creator.blink_username,
-          tier: sel.name,
-          sats: satsOf(sel, cycle, rate),
-          cycle,
-          kind: k,
-        }),
+      const res = await fetch('/api/pay/create', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: creator.blink_username, tier: tier.name, sats: satsOf(tier, cycle, rate), cycle, contact }),
       });
-    } catch {}
-    setStep('done');
+      const data = await res.json();
+      if (!data.ok) { setError(data.error || 'Could not create invoice'); return; }
+      setPay(data);
+      poll.current = setInterval(async () => {
+        try {
+          const s = await fetch(`/api/pay/status?subId=${data.subId}`).then((r) => r.json());
+          if (s.status === 'PAID') { clearInterval(poll.current); setPaidUntil(s.paidUntil); setStep('done'); }
+          else if (s.status === 'EXPIRED') { clearInterval(poll.current); setError('The invoice expired. Start again.'); }
+        } catch {}
+      }, 3000);
+    } catch (e) { setError(String(e.message)); }
   }
 
+  function reset() { clearInterval(poll.current); setStep('pick'); setSel(null); setPay(null); setPaidUntil(null); setError(''); }
+
   if (step === 'done') {
-    const v = view(sel, cycle, rate);
     return (
       <div className="done">
         <div className="big">✓</div>
         <div className="t">You&apos;re subscribed</div>
-        <p style={{ color: 'var(--dim)', fontSize: 14, margin: '8px auto 0', maxWidth: '38ch' }}>
-          {sel.name} · {v.label} to {creator.brand}, via {kind}. We&apos;ll pull the next payment automatically within your cap, or nudge you if you chose reminders.
+        <p style={{ color: 'var(--dim)', fontSize: 14, margin: '8px auto 0', maxWidth: '40ch' }}>
+          {sel.name} to {creator.brand}. Access is active until <b>{fmtDate(paidUntil)}</b>. When it lapses we&apos;ll remind you to renew — you pay again to extend. Nothing auto-charges; you approve every payment.
         </p>
-        <button className="btn ghost" style={{ maxWidth: 240, margin: '16px auto 0' }} onClick={() => { setStep('pick'); setSel(null); setKind(null); }}>
-          Back to plans
-        </button>
+        <button className="btn ghost" style={{ maxWidth: 240, margin: '16px auto 0' }} onClick={reset}>Back to plans</button>
       </div>
     );
   }
 
-  if (step === 'connect') {
-    const v = view(sel, cycle, rate);
+  if (step === 'pay') {
+    const v = sel ? view(sel, cycle, rate) : null;
     return (
-      <div style={{ maxWidth: 560, margin: '0 auto' }}>
-        <div className="explain">
-          Authorize <b>{creator.brand}</b> to receive <b>{v.label}</b>. Choose how much control you keep:
+      <div style={{ maxWidth: 420, margin: '0 auto', textAlign: 'center' }}>
+        <div className="explain" style={{ textAlign: 'left' }}>
+          Pay <b>{v.label}</b> to <b>@{creator.blink_username}</b> to start your <b>{sel.name}</b> subscription. Scan with any Lightning wallet, or open in Blink.
         </div>
-        {CONNECT_OPTIONS.map(([k, t, d]) => (
-          <button key={k} className="tier" style={{ marginBottom: 10, width: '100%' }} onClick={() => confirm(k)}>
-            <div><div className="tn">{t}</div><div className="td">{d}</div></div>
-          </button>
-        ))}
-        <button className="btn ghost" onClick={() => setStep('pick')}>← back to plans</button>
+        {error && <p style={{ color: 'var(--red)', fontSize: 13 }}>{error}</p>}
+        {!pay && !error && <p style={{ color: 'var(--faint)', fontFamily: 'var(--mono)', fontSize: 13 }}>Creating invoice…</p>}
+        {pay && (
+          <>
+            <img src={pay.qr} alt="Lightning invoice QR" width={220} height={220}
+                 style={{ borderRadius: 12, margin: '4px auto 14px', display: 'block', background: '#fff', padding: 8 }} />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <a className="btn primary" style={{ flex: 1 }} href={`lightning:${pay.paymentRequest}`}>Open in wallet</a>
+              <button className="btn ghost" style={{ flex: 1 }} onClick={() => navigator.clipboard?.writeText(pay.paymentRequest)}>Copy invoice</button>
+            </div>
+            <p style={{ color: 'var(--faint)', fontFamily: 'var(--mono)', fontSize: 12, marginTop: 14 }}>
+              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--amber)', marginRight: 7 }} />
+              waiting for payment — updates automatically
+            </p>
+          </>
+        )}
+        <button className="btn ghost" style={{ marginTop: 6 }} onClick={reset}>← back to plans</button>
       </div>
     );
   }
@@ -99,10 +110,18 @@ export default function SubscribePanel({ creator, rate }) {
       <div className="toggle-wrap">
         <div className="seg">
           <button className={cycle === 'monthly' ? 'on' : ''} onClick={() => setCycle('monthly')}>Monthly</button>
-          <button className={cycle === 'annual' ? 'on' : ''} onClick={() => setCycle('annual')}>
-            Annual <span className="save">2 months free</span>
-          </button>
+          <button className={cycle === 'annual' ? 'on' : ''} onClick={() => setCycle('annual')}>Annual <span className="save">2 months free</span></button>
         </div>
+      </div>
+
+      <div style={{ maxWidth: 460, margin: '0 auto 20px' }}>
+        <input
+          value={contact}
+          onChange={(e) => setContact(e.target.value)}
+          placeholder="Email or nostr for renewal reminders (optional)"
+          style={{ width: '100%', background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 10,
+                   color: 'var(--ink)', fontFamily: 'var(--mono)', fontSize: 13, padding: '11px 13px', outline: 'none' }}
+        />
       </div>
 
       <div className="cols3">
@@ -116,13 +135,9 @@ export default function SubscribePanel({ creator, rate }) {
               <div className="price"><span className="big">{v.primary}</span><span className="per">{v.per}</span></div>
               <div className="approx">{v.approx}</div>
               <div className="savenote">{v.savenote}</div>
-              <ul className="feats">
-                {t.benefits.map((b, i) => <li key={i}><span className="ck">✓</span>{b}</li>)}
-              </ul>
+              <ul className="feats">{t.benefits.map((b, i) => <li key={i}><span className="ck">✓</span>{b}</li>)}</ul>
               <div className="cta">
-                <button className={`btn ${t.recommended ? 'primary' : 'outline'}`} onClick={() => { setSel(t); setStep('connect'); }}>
-                  Subscribe
-                </button>
+                <button className={`btn ${t.recommended ? 'primary' : 'outline'}`} onClick={() => startPay(t)}>Subscribe</button>
               </div>
             </div>
           );

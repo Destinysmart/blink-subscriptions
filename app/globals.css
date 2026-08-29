@@ -156,3 +156,6 @@ tr:last-child td{border-bottom:0}
 .land .btn{padding:14px 22px}
 .foot{margin-top:26px;color:var(--faint);font-size:12px;text-align:center;line-height:1.7}
 .foot code{font-family:var(--mono);color:var(--orange);background:var(--panel);padding:2px 6px;border-radius:5px;font-size:11px}
+
+.pill.expired{background:rgba(232,115,90,.16);color:var(--red)}
+.pill.pending{background:rgba(240,192,64,.16);color:var(--amber)}
