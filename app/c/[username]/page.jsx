@@ -11,7 +11,7 @@ export default async function CreatorPage({ params }) {
     <div className="wrap">
       <div className="nav">
         <a className="brandmark" href="/"><span className="dot">₿</span>Blink<span className="s">Sub</span></a>
-        {DEMO && <span className="demo-flag">demo mode</span>}
+        {DEMO && <span className="demo-flag">local db</span>}
       </div>
 
       <SubscribeExperience creator={creator} rate={SATS_PER_USD} />

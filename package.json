@@ -5,7 +5,9 @@
   "description": "Bitcoin/Lightning-native subscriptions on Blink — billing engine + creator subscribe page and dashboard.",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=18.18" },
+  "engines": {
+    "node": ">=18.18"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -19,6 +21,7 @@
     "@supabase/supabase-js": "^2.45.0",
     "nostr-tools": "^2.7.0",
     "ws": "^8.18.0",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "@libsql/client": "^0.14.0"
   }
 }

@@ -16,7 +16,7 @@ export default function Home() {
           <a className="btn primary" href="/c/destiny_smart">See a subscribe page</a>
           <a className="btn ghost" href="/dashboard">Open the dashboard</a>
         </div>
-        <div className="foot">Running in demo mode with sample data. Set <code>SUPABASE_URL</code> and Blink keys to go live.</div>
+        <div className="foot">No signup, no database setup. Runs on a local file. Set <code>SUPABASE_URL</code> and Blink keys to go live.</div>
       </div>
     </div>
   );

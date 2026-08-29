@@ -25,6 +25,12 @@ function view(tier, cycle, rate) {
   return { primary, per, approx, savenote, label: isSats ? `${primary} ${per}` : `${primary}${per}` };
 }
 
+function satsOf(tier, cycle, rate) {
+  const amt = tier[cycle];
+  if (amt.sats != null) return amt.sats;
+  return Math.round((amt.usd / 100) * rate);
+}
+
 const CONNECT_OPTIONS = [
   ['nwc', 'Connect with Nostr Wallet Connect', 'Auto-renews within a budget you set. Cancel by revoking the connection.'],
   ['intraledger', 'Authorize a capped Blink key', 'Blink to Blink, instant and free. Capped at your monthly limit.'],
@@ -36,6 +42,24 @@ export default function SubscribePanel({ creator, rate }) {
   const [sel, setSel] = useState(null);
   const [step, setStep] = useState('pick');
   const [kind, setKind] = useState(null);
+
+  async function confirm(k) {
+    setKind(k);
+    try {
+      await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: creator.blink_username,
+          tier: sel.name,
+          sats: satsOf(sel, cycle, rate),
+          cycle,
+          kind: k,
+        }),
+      });
+    } catch {}
+    setStep('done');
+  }
 
   if (step === 'done') {
     const v = view(sel, cycle, rate);
@@ -61,7 +85,7 @@ export default function SubscribePanel({ creator, rate }) {
           Authorize <b>{creator.brand}</b> to receive <b>{v.label}</b>. Choose how much control you keep:
         </div>
         {CONNECT_OPTIONS.map(([k, t, d]) => (
-          <button key={k} className="tier" style={{ marginBottom: 10, width: '100%' }} onClick={() => { setKind(k); setStep('done'); }}>
+          <button key={k} className="tier" style={{ marginBottom: 10, width: '100%' }} onClick={() => confirm(k)}>
             <div><div className="tn">{t}</div><div className="td">{d}</div></div>
           </button>
         ))}

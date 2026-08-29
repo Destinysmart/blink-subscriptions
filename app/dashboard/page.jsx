@@ -25,7 +25,7 @@ export default async function Dashboard() {
       <div className="nav">
         <a className="brandmark" href="/"><span className="dot">₿</span>Blink<span className="s">Sub</span></a>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          {DEMO && <span className="demo-flag">demo mode</span>}
+          {DEMO && <span className="demo-flag">local db</span>}
           <a className="navlink" href={`/c/${creator.blink_username}`}>Subscribe page</a>
         </div>
       </div>
