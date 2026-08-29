@@ -1,4 +1,4 @@
-import { getCreator, DEMO, SATS_PER_USD } from '@/lib/data';
+import { getCreator, SATS_PER_USD, LOCAL } from '@/lib/data';
 import SubscribeExperience from './subscribe-experience';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +11,7 @@ export default async function CreatorPage({ params }) {
     <div className="wrap">
       <div className="nav">
         <a className="brandmark" href="/"><span className="dot">₿</span>Blink<span className="s">Sub</span></a>
-        {DEMO && <span className="demo-flag">local db</span>}
+        {LOCAL && <span className="demo-flag">local db</span>}
       </div>
 
       <SubscribeExperience creator={creator} rate={SATS_PER_USD} />
