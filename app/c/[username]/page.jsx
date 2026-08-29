@@ -1,5 +1,5 @@
 import { getCreator, DEMO, SATS_PER_USD } from '@/lib/data';
-import SubscribePanel from './subscribe-panel';
+import SubscribeExperience from './subscribe-experience';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,24 +10,11 @@ export default async function CreatorPage({ params }) {
   return (
     <div className="wrap">
       <div className="nav">
-        <a className="brandmark" href="/"><span className="dot">₿</span> Blink<span style={{ color: 'var(--orange2)', fontStyle: 'italic', fontWeight: 500 }}>Sub</span></a>
+        <a className="brandmark" href="/"><span className="dot">₿</span>Blink<span className="s">Sub</span></a>
         {DEMO && <span className="demo-flag">demo mode</span>}
       </div>
 
-      <div className="panel">
-        <div className="ph"><h2>Support {creator.brand}</h2><span className="tag">monthly · recurring</span></div>
-        <div className="pb">
-          <div className="creator-head">
-            <div className="avatar">{(creator.brand || creator.blink_username)[0].toUpperCase()}</div>
-            <div>
-              <div className="n">{creator.brand}</div>
-              <div className="h">@{creator.blink_username}</div>
-            </div>
-          </div>
-          <p className="creator-head" style={{ display: 'block', color: 'var(--dim)', fontSize: 14, margin: '0 0 4px', maxWidth: '64ch' }}>{creator.pitch}</p>
-          <SubscribePanel creator={creator} rate={SATS_PER_USD} />
-        </div>
-      </div>
+      <SubscribeExperience creator={creator} rate={SATS_PER_USD} />
 
       <div className="panel" style={{ marginTop: 20 }}>
         <div className="ph"><h2>How it works</h2><span className="tag">honest mechanics</span></div>
