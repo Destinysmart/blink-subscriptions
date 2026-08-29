@@ -1,4 +1,4 @@
-import { getDashboard, LOCAL } from '@/lib/data';
+import { getDashboard, getDefaultCreator, LOCAL } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,8 +17,9 @@ function ago(iso) {
   return h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
 }
 
-export default async function Dashboard() {
-  const { creator, stats, subs, events } = await getDashboard('destiny_smart');
+export default async function Dashboard({ searchParams }) {
+  const who = searchParams?.u || (await getDefaultCreator());
+  const { creator, stats, subs, events } = await getDashboard(who);
 
   return (
     <div className="wrap">
