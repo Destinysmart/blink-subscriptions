@@ -44,7 +44,7 @@ export default async function Dashboard({ searchParams }) {
           </div>
 
           <div className="panel" style={{ marginTop: 16 }}>
-            <div className="ph"><h2>Subscribers</h2><span className="tag">{subs.length} total</span></div>
+            <div className="ph"><h2>Subscribers</h2><span className="tag">{subs.length} total · {stats.free} free</span></div>
             <div className="pb" style={{ paddingTop: 6 }}>
               {subs.length === 0 ? (
                 <div className="empty">No subscribers yet. Share your subscribe page to get your first.</div>
@@ -57,7 +57,7 @@ export default async function Dashboard({ searchParams }) {
                         <td><div className="contact">{s.contact}</div><div className="sub">{s.sats.toLocaleString()} sats/mo</div></td>
                         <td>{s.tier}</td>
                         <td>{fmtDue(s.nextDue)}</td>
-                        <td><span className={`pill ${s.status}`}>{s.status}</span></td>
+                        <td><span className={`pill ${s.kind === 'free' ? 'free' : s.status}`}>{s.kind === 'free' ? 'free' : s.status}</span></td>
                       </tr>
                     ))}
                   </tbody>
