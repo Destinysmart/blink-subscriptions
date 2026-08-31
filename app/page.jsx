@@ -1,4 +1,5 @@
 import GetStarted from './get-started';
+import ThemeToggle from './theme-toggle';
 
 export const dynamic = 'force-dynamic';
 
@@ -6,11 +7,10 @@ export default function Home() {
   return (
     <div className="wrap">
       <div className="nav">
-        <div className="brandmark"><img className="logo" src="/blink/blink-lockup-dark.svg" alt="Blink" /><span className="product">subscriptions</span></div>
-        <a className="navlink" href="/dashboard">Dashboard</a>
+        <div className="brandmark"><img className="logo logo-dark" src="/blink/blink-lockup-dark.svg" alt="Blink" /><img className="logo logo-light" src="/blink/blink-lockup-color.svg" alt="Blink" /><span className="product">subscriptions</span></div>
+        <ThemeToggle />
       </div>
       <div className="land">
-        <div className="eyebrow">Built on Blink</div>
         <h1>Get paid monthly, in bitcoin</h1>
         <p>Recurring support to your Blink username. No signup, no bank. Readers pay from any Lightning wallet.</p>
         <GetStarted />

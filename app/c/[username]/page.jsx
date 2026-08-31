@@ -10,7 +10,7 @@ export default async function CreatorPage({ params }) {
   return (
     <div className="wrap">
       <div className="nav">
-        <a className="brandmark" href="/"><img className="logo" src="/blink/blink-lockup-dark.svg" alt="Blink" /><span className="product">subscriptions</span></a>
+        <a className="brandmark" href="/"><img className="logo logo-dark" src="/blink/blink-lockup-dark.svg" alt="Blink" /><img className="logo logo-light" src="/blink/blink-lockup-color.svg" alt="Blink" /><span className="product">subscriptions</span></a>
         <a className="navlink" href={`/dashboard?u=${creator.blink_username}`}>Dashboard</a>
       </div>
       <div className="panel">

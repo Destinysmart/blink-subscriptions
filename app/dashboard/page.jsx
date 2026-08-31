@@ -26,7 +26,7 @@ export default async function Dashboard({ searchParams }) {
   return (
     <div className="wrap">
       <div className="nav">
-        <a className="brandmark" href="/"><img className="logo" src="/blink/blink-lockup-dark.svg" alt="Blink" /><span className="product">subscriptions</span></a>
+        <a className="brandmark" href="/"><img className="logo logo-dark" src="/blink/blink-lockup-dark.svg" alt="Blink" /><img className="logo logo-light" src="/blink/blink-lockup-color.svg" alt="Blink" /><span className="product">subscriptions</span></a>
         <a className="navlink" href={`/c/${creator.blink_username}`}>Subscribe page</a>
       </div>
 
