@@ -1,5 +1,6 @@
 import { getDashboard, getDefaultCreator, getCreator } from '@/lib/data';
 import TierEditor from './tier-editor';
+import EmbedSnippet from './embed-snippet';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,6 +65,11 @@ export default async function Dashboard({ searchParams }) {
                 </table>
               )}
             </div>
+          </div>
+
+          <div className="panel" style={{ marginTop: 16 }}>
+            <div className="ph"><h2>Embed on your site</h2><span className="tag">copy &amp; paste</span></div>
+            <div className="pb"><EmbedSnippet username={creator.blink_username} /></div>
           </div>
 
           <div className="panel" style={{ marginTop: 16 }}>
