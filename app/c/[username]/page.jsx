@@ -1,30 +1,29 @@
-import { getCreator, SATS_PER_USD, LOCAL } from '@/lib/data';
-import SubscribeExperience from './subscribe-experience';
+import { getCreator, SATS_PER_USD } from '@/lib/data';
+import SubscribePanel from './subscribe-panel';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CreatorPage({ params }) {
   const creator = await getCreator(params.username);
-  if (!creator) return <div className="wrap"><p>Creator not found.</p></div>;
+  if (!creator) return <div className="wrap"><p>Not found.</p></div>;
 
   return (
     <div className="wrap">
       <div className="nav">
-        <a className="brandmark" href="/"><span className="dot">₿</span>Blink<span className="s">Sub</span></a>
-        {LOCAL && <span className="demo-flag">local db</span>}
+        <a className="brandmark" href="/"><img className="logo" src="/blink/blink-lockup-dark.svg" alt="Blink" /><span className="product">subscriptions</span></a>
+        <a className="navlink" href={`/dashboard?u=${creator.blink_username}`}>Dashboard</a>
       </div>
-
-      <SubscribeExperience creator={creator} rate={SATS_PER_USD} />
-
-      <div className="panel" style={{ marginTop: 20 }}>
-        <div className="ph"><h2>How it works</h2><span className="tag">honest mechanics</span></div>
+      <div className="panel">
         <div className="pb">
-          <div className="howrow">
-            <div><div className="h">You approve every payment</div><p>Lightning cannot auto-charge you. A capped authorization lets each cycle settle within a limit you set.</p></div>
-            <div><div className="h">Paid to a Blink username</div><p>Funds go straight to the creator. No middleman balance, no float.</p></div>
-            <div><div className="h">Cancel anytime</div><p>Revoke the authorization and it lapses. Nothing holds standing power over your funds.</p></div>
-            <div><div className="h">Instant, final settlement</div><p>No chargebacks, no disputes. Payments are final the moment they land.</p></div>
+          <div className="creator-head">
+            <div className="avatar">{(creator.brand || creator.blink_username)[0].toUpperCase()}</div>
+            <div>
+              <div className="n">{creator.brand}</div>
+              <div className="h">@{creator.blink_username}</div>
+            </div>
           </div>
+          {creator.pitch && <p className="creator-pitch">{creator.pitch}</p>}
+          <SubscribePanel creator={creator} rate={SATS_PER_USD} />
         </div>
       </div>
     </div>

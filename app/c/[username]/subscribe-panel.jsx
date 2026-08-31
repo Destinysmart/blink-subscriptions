@@ -33,7 +33,6 @@ function fmtDate(iso) {
 export default function SubscribePanel({ creator, rate }) {
   const [cycle, setCycle] = useState('monthly');
   const [sel, setSel] = useState(null);
-  const [contact, setContact] = useState('');
   const [step, setStep] = useState('pick');       // pick | pay | done
   const [pay, setPay] = useState(null);           // { subId, paymentRequest, qr }
   const [paidUntil, setPaidUntil] = useState(null);
@@ -47,7 +46,7 @@ export default function SubscribePanel({ creator, rate }) {
     try {
       const res = await fetch('/api/pay/create', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: creator.blink_username, tier: tier.name, sats: satsOf(tier, cycle, rate), cycle, contact }),
+        body: JSON.stringify({ username: creator.blink_username, tier: tier.name, sats: satsOf(tier, cycle, rate), cycle }),
       });
       const data = await res.json();
       if (!data.ok) { setError(data.error || 'Could not create invoice'); return; }
@@ -114,16 +113,6 @@ export default function SubscribePanel({ creator, rate }) {
         </div>
       </div>
 
-      <div style={{ maxWidth: 460, margin: '0 auto 20px' }}>
-        <input
-          value={contact}
-          onChange={(e) => setContact(e.target.value)}
-          placeholder="Email or nostr for renewal reminders (optional)"
-          style={{ width: '100%', background: 'var(--panel2)', border: '1px solid var(--line)', borderRadius: 10,
-                   color: 'var(--ink)', fontFamily: 'var(--mono)', fontSize: 13, padding: '11px 13px', outline: 'none' }}
-        />
-      </div>
-
       <div className="cols3">
         {creator.tiers.map((t) => {
           const v = view(t, cycle, rate);
@@ -137,7 +126,7 @@ export default function SubscribePanel({ creator, rate }) {
               <div className="savenote">{v.savenote}</div>
               <ul className="feats">{t.benefits.map((b, i) => <li key={i}><span className="ck">✓</span>{b}</li>)}</ul>
               <div className="cta">
-                <button className={`btn ${t.recommended ? 'primary' : 'outline'}`} onClick={() => startPay(t)}>Subscribe</button>
+                <button className={`btn ${t.recommended ? 'grad' : 'outline'}`} onClick={() => startPay(t)}>Subscribe</button>
               </div>
             </div>
           );
