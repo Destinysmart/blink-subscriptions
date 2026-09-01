@@ -45,7 +45,7 @@ function AdvancedInner() {
         clearInterval(poll.current);
         localStorage.setItem('blinkManage:' + clean, v.manageToken);
         setToken(v.manageToken); setConn({ verified: true, secret: v.secret, webhookUrl: '', plan: { paid: true, until: v.until } }); setWebhookUrl(''); setStep('panel');
-      } else if (v.verified === false && v.error) { clearInterval(poll.current); setMsg(v.error); }
+      } else if (v.error) { clearInterval(poll.current); setMsg(v.error); }
     }, 3000);
   }
 
@@ -105,7 +105,7 @@ function AdvancedInner() {
                   <a className="btn primary" style={{ flex: 1 }} href={`lightning:${inv.paymentRequest}`}>Open in wallet</a>
                   <button className="btn ghost" style={{ flex: 1 }} onClick={() => navigator.clipboard.writeText(inv.paymentRequest)}>Copy</button>
                 </div>
-                <p style={{ color: 'var(--faint)', fontSize: 12, marginTop: 12 }}>Pay from @{clean} specifically — that&apos;s how we confirm it&apos;s yours. Unlocks automatically.</p>
+                <p style={{ color: 'var(--faint)', fontSize: 12, marginTop: 12 }}>Best paid inside Blink: tap Send in your app, choose the username @circularity, and send from @{clean}. That&apos;s how we confirm it&apos;s yours. Unlocks automatically.</p>
               </>
             )}
             <button className="btn ghost sm" style={{ marginTop: 10 }} onClick={() => { clearInterval(poll.current); setStep('start'); }}>← back</button>
