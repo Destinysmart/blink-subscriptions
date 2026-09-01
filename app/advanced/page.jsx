@@ -2,6 +2,11 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+async function safeJson(res) {
+  try { const t = await res.text(); return t ? JSON.parse(t) : { error: 'Empty response from server (' + res.status + ')' }; }
+  catch { return { error: 'Server error (' + res.status + ')' }; }
+}
+
 function AdvancedInner() {
   const params = useSearchParams();
   const [username, setUsername] = useState(params.get('u') || '');
@@ -24,18 +29,18 @@ function AdvancedInner() {
   useEffect(() => () => clearInterval(poll.current), []);
 
   async function loadPanel(u, t) {
-    const c = await fetch(`/api/advanced/connector?u=${encodeURIComponent(u)}&t=${encodeURIComponent(t)}`).then((r) => r.json());
+    const c = await fetch(`/api/advanced/connector?u=${encodeURIComponent(u)}&t=${encodeURIComponent(t)}`).then(safeJson);
     if (c && !c.error && c.plan && c.plan.paid) { setToken(t); setConn(c); setWebhookUrl(c.webhookUrl || ''); setStep('panel'); }
   }
 
   async function startVerify() {
     if (!clean) return;
     setMsg(''); setInv(null); setStep('pay');
-    const r = await fetch('/api/advanced/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: clean }) }).then((x) => x.json());
+    const r = await fetch('/api/advanced/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: clean }) }).then(safeJson);
     if (r.error) { setMsg(r.error); return; }
     setInv(r);
     poll.current = setInterval(async () => {
-      const v = await fetch(`/api/advanced/verify?c=${encodeURIComponent(r.claimId)}`).then((x) => x.json());
+      const v = await fetch(`/api/advanced/verify?c=${encodeURIComponent(r.claimId)}`).then(safeJson);
       if (v.verified && v.manageToken) {
         clearInterval(poll.current);
         localStorage.setItem('blinkManage:' + clean, v.manageToken);
@@ -46,15 +51,15 @@ function AdvancedInner() {
 
   async function saveWebhook() {
     setMsg('saving');
-    const r = await fetch('/api/advanced/connector', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: clean, token, webhookUrl }) }).then((x) => x.json());
+    const r = await fetch('/api/advanced/connector', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: clean, token, webhookUrl }) }).then(safeJson);
     setMsg(r.ok ? 'saved' : 'error'); setTimeout(() => setMsg(''), 2200);
   }
   async function rotate() {
-    const r = await fetch('/api/advanced/connector', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: clean, token, rotate: true }) }).then((x) => x.json());
+    const r = await fetch('/api/advanced/connector', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: clean, token, rotate: true }) }).then(safeJson);
     if (r.secret) setConn((c) => ({ ...c, secret: r.secret }));
   }
   async function test() {
-    const r = await fetch('/api/advanced/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: clean, token }) }).then((x) => x.json());
+    const r = await fetch('/api/advanced/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: clean, token }) }).then(safeJson);
     setMsg(r.ok ? 'test sent' : 'set a webhook URL first'); setTimeout(() => setMsg(''), 2500);
   }
 
