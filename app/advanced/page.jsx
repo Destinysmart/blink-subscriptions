@@ -78,12 +78,12 @@ function AdvancedInner() {
 
       {step === 'start' && (
         <div className="panel" style={{ marginTop: 16 }}>
-          <div className="ph"><h2>Unlock the connector</h2><span className="tag">21,000 sats / month</span></div>
+          <div className="ph"><h2>Unlock the connector</h2><span className="tag">one-time unlock</span></div>
           <div className="pb">
             <label>Your Blink username</label>
             <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="yourname" autoCapitalize="none" spellCheck={false} style={{ maxWidth: 360 }} />
             <p style={{ color: 'var(--faint)', fontSize: 13 }}>
-              You&apos;ll pay the fee <b>from this account</b>. Paying from it proves it&apos;s yours (only the owner can send from it), and it activates the connector for 30 days. The subscribe box and embed stay free.
+              You&apos;ll pay a one-time fee <b>from this account</b>. Paying from it proves it&apos;s yours (only the owner can send from it) and unlocks the connector for good. The subscribe box and embed stay free.
             </p>
             {msg && <p style={{ color: 'var(--error)', fontSize: 13 }}>{msg}</p>}
             <button className="btn grad" onClick={startVerify} disabled={!clean}>Continue to payment</button>
@@ -99,7 +99,7 @@ function AdvancedInner() {
             {!inv && !msg && <p style={{ color: 'var(--faint)' }}>Creating invoice…</p>}
             {inv && (
               <>
-                <p style={{ color: 'var(--dim)', fontSize: 14 }}>Pay <b>{inv.expectedSats.toLocaleString()} sats</b> from your <b>@{clean}</b> Blink account.</p>
+                <p style={{ color: 'var(--dim)', fontSize: 14 }}>Pay <b>{inv.expectedSats.toLocaleString()} sats</b> (one-time) from your <b>@{clean}</b> Blink account.</p>
                 <img src={inv.qr} alt="Pay" width={200} height={200} style={{ borderRadius: 12, margin: '4px auto 12px', display: 'block', background: '#fff', padding: 8 }} />
                 <div style={{ display: 'flex', gap: 8, maxWidth: 360, margin: '0 auto' }}>
                   <a className="btn primary" style={{ flex: 1 }} href={`lightning:${inv.paymentRequest}`}>Open in wallet</a>
