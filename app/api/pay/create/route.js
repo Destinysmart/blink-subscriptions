@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req) {
   try {
-    const { username, tier, sats, cycle, email } = await req.json();
+    const { username, payout, tier, sats, cycle, email } = await req.json();
     const amount = Math.round(Number(sats)) || 0;
     if (!username || amount < 1) return NextResponse.json({ ok: false, error: 'missing username or amount' }, { status: 400 });
 
@@ -14,7 +14,7 @@ export async function POST(req) {
     const QRCode = (await import('qrcode')).default;
 
     // no keys: public invoice for the creator's username
-    const { paymentRequest, paymentHash } = await createInvoiceForUsername(username, amount, `${tier} subscription`);
+    const { paymentRequest, paymentHash } = await createInvoiceForUsername(payout || username, amount, `${tier} subscription`);
     const { subId } = await createPendingSub({ username, contact: email, tier, sats: amount, cycle, paymentHash, paymentRequest });
     const qr = await QRCode.toDataURL('lightning:' + paymentRequest.toUpperCase(), { margin: 1, width: 240 });
 

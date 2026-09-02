@@ -51,7 +51,7 @@ export default function SubscribePanel({ creator, rate }) {
     setStep('pay'); setPay(null);
     try {
       const res = await fetch('/api/pay/create', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: creator.blink_username, tier: sel.name, sats: satsOf(sel, cycle, rate), cycle, email }) });
+        body: JSON.stringify({ username: creator.blink_username, payout: creator.payout_username || creator.blink_username, tier: sel.name, sats: satsOf(sel, cycle, rate), cycle, email }) });
       const data = await res.json();
       if (!data.ok) { setError(data.error || 'Could not create invoice'); return; }
       setPay(data);
