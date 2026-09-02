@@ -14,7 +14,7 @@ export default function Home() {
         <h1>Get paid monthly, in bitcoin</h1>
         <p>Recurring support to your Blink username. No signup, no bank. Readers pay from any Lightning wallet.</p>
         <GetStarted />
-        <div className="foot">Just your Blink username. Nothing to install. · <a href="/c/destiny_smart" style={{ color: 'var(--dim)', textDecoration: 'underline' }}>see an example</a></div>
+        <div className="foot">Just your Blink username. Nothing to install. · <a href="/c/demo" style={{ color: 'var(--dim)', textDecoration: 'underline' }}>see an example</a></div>
       </div>
     </div>
   );

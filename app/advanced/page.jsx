@@ -122,7 +122,7 @@ function AdvancedInner() {
           <div className="ph"><h2>Webhook for @{clean}</h2><span className="tag" style={{ color: 'var(--green)' }}>active</span></div>
           <div className="pb">
             <label>Your webhook URL</label>
-            <input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://bitcoinafricastory.com/api/blink-webhook" style={{ fontFamily: 'var(--mono)', fontSize: 13 }} />
+            <input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://yoursite.com/api/blink-webhook" style={{ fontFamily: 'var(--mono)', fontSize: 13 }} />
             <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center' }}>
               <button className="btn primary sm" onClick={saveWebhook}>{msg === 'saving' ? 'Saving…' : 'Save webhook'}</button>
               <button className="btn ghost sm" onClick={test}>Send test event</button>
