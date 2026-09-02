@@ -42,6 +42,7 @@ export default function SubscribePanel({ creator, rate }) {
   function reset() { clearInterval(poll.current); setStep('pick'); setSel(null); setPay(null); setPaidUntil(null); setError(''); }
 
   async function proceed() {
+    if (creator.demo) { setStep('demo'); return; }
     if (!validEmail(email)) { setError('Enter a valid email.'); return; }
     setError('');
     if (sel.free) {
@@ -63,6 +64,21 @@ export default function SubscribePanel({ creator, rate }) {
         } catch {}
       }, 3000);
     } catch (e) { setError(String(e.message)); }
+  }
+
+  if (step === 'demo') {
+    return (
+      <div className="done">
+        <div className="t" style={{ marginTop: 0 }}>This is an example</div>
+        <p style={{ color: 'var(--dim)', fontSize: 14, margin: '10px auto 0', maxWidth: '40ch' }}>
+          The demo page shows the flow but doesn&apos;t take real payments. On a real creator&apos;s page, this is where the reader pays and gets added to the list. Enter your own Blink username on the home page to make a live one.
+        </p>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>
+          <a className="btn primary" href="/">Make yours</a>
+          <button className="btn ghost" onClick={reset}>Back to plans</button>
+        </div>
+      </div>
+    );
   }
 
   if (step === 'joined') {
@@ -148,7 +164,7 @@ export default function SubscribePanel({ creator, rate }) {
               )}
               <ul className="feats">{(t.benefits || []).map((b, i) => <li key={i}><span className="ck">✓</span>{b}</li>)}</ul>
               <div className="cta">
-                <button className={`btn ${t.free ? 'ghost' : t.recommended ? 'grad' : 'outline'}`} onClick={() => { setSel(t); setEmail(''); setError(''); setStep('email'); }}>
+                <button className={`btn ${t.free ? 'ghost' : t.recommended ? 'grad' : 'outline'}`} onClick={() => { setSel(t); setEmail(''); setError(''); setStep(creator.demo ? 'demo' : 'email'); }}>
                   {t.free ? 'Join free' : 'Subscribe'}
                 </button>
               </div>
