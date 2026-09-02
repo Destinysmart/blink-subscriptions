@@ -93,22 +93,26 @@ function AdvancedInner() {
 
       {step === 'pay' && (
         <div className="panel" style={{ marginTop: 16 }}>
-          <div className="ph"><h2>Pay from @{clean}</h2><span className="tag">{inv ? inv.expectedSats.toLocaleString() : '…'} sats</span></div>
+          <div className="ph"><h2>Verify @{clean}</h2><span className="tag">{inv ? inv.sats.toLocaleString() : '…'} sats</span></div>
           <div className="pb" style={{ textAlign: 'center' }}>
             {msg && <p style={{ color: 'var(--error)', fontSize: 13 }}>{msg}</p>}
-            {!inv && !msg && <p style={{ color: 'var(--faint)' }}>Creating invoice…</p>}
+            {!inv && !msg && <p style={{ color: 'var(--faint)' }}>Starting…</p>}
             {inv && (
               <>
-                <p style={{ color: 'var(--dim)', fontSize: 14 }}>Pay <b>{inv.expectedSats.toLocaleString()} sats</b> (one-time) from your <b>@{clean}</b> Blink account.</p>
-                <img src={inv.qr} alt="Pay" width={200} height={200} style={{ borderRadius: 12, margin: '4px auto 12px', display: 'block', background: '#fff', padding: 8 }} />
-                <div style={{ display: 'flex', gap: 8, maxWidth: 360, margin: '0 auto' }}>
-                  <a className="btn primary" style={{ flex: 1 }} href={`lightning:${inv.paymentRequest}`}>Open in wallet</a>
-                  <button className="btn ghost" style={{ flex: 1 }} onClick={() => navigator.clipboard.writeText(inv.paymentRequest)}>Copy</button>
+                <div className="explain" style={{ textAlign: 'left' }}>
+                  In your Blink app tap <b>Send</b>, choose the username <b>circularity</b>, and send at least <b>{inv.sats.toLocaleString()} sats</b> from <b>@{clean}</b>. Sending to the username settles inside Blink and carries your name — that&apos;s how we confirm it&apos;s you and unlock the connector.
                 </div>
-                <p style={{ color: 'var(--faint)', fontSize: 12, marginTop: 12 }}>Best paid inside Blink: tap Send in your app, choose the username @circularity, and send from @{clean}. That&apos;s how we confirm it&apos;s yours. Unlocks automatically.</p>
+                <div style={{ display: 'flex', gap: 8, maxWidth: 380, margin: '0 auto 14px' }}>
+                  <input readOnly value="circularity" style={{ fontFamily: 'var(--mono)', textAlign: 'center' }} />
+                  <button className="btn primary" style={{ flex: 'none' }} onClick={() => navigator.clipboard.writeText('circularity')}>Copy username</button>
+                </div>
+                <img src={inv.qr} alt="circularity paycode" width={190} height={190} style={{ borderRadius: 12, margin: '4px auto 6px', display: 'block', background: '#fff', padding: 8 }} />
+                <p style={{ color: 'var(--faint)', fontSize: 11.5, maxWidth: 360, margin: '0 auto' }}>
+                  You can scan this paycode, but if your wallet sends it as Lightning it won&apos;t verify you. Sending to the <b>username</b> above is what confirms it&apos;s you. Unlocks automatically.
+                </p>
               </>
             )}
-            <button className="btn ghost sm" style={{ marginTop: 10 }} onClick={() => { clearInterval(poll.current); setStep('start'); }}>← back</button>
+            <button className="btn ghost sm" style={{ marginTop: 12 }} onClick={() => { clearInterval(poll.current); setStep('start'); }}>← back</button>
           </div>
         </div>
       )}

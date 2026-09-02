@@ -8,10 +8,10 @@ export async function POST(req) {
     const { startOwnershipVerify } = await import('@/lib/db/local.mjs');
     const QRCode = (await import('qrcode')).default;
     const r = await startOwnershipVerify(username);
-    const qr = await QRCode.toDataURL('lightning:' + r.paymentRequest.toUpperCase(), { margin: 1, width: 220 });
+    const qr = await QRCode.toDataURL('lightning:' + r.lnaddress, { margin: 1, width: 220 });
     return NextResponse.json({ ...r, qr });
   } catch (e) {
-    return NextResponse.json({ error: 'Could not create the verification invoice: ' + String(e.message) }, { status: 200 });
+    return NextResponse.json({ error: 'Could not start verification: ' + String(e.message) }, { status: 200 });
   }
 }
 export async function GET(req) {
