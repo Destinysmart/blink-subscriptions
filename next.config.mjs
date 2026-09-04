@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ['@libsql/client', 'ws', 'nostr-tools'],
+    serverComponentsExternalPackages: ['@libsql/client', '@libsql/client/web', 'ws', 'nostr-tools'],
   },
   async headers() {
     return [
