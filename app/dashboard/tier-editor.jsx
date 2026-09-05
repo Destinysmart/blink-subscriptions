@@ -29,9 +29,10 @@ export default function TierEditor({ username, initialTiers }) {
       ...t,
       benefits: Array.isArray(t.benefits) ? t.benefits : String(t.benefits || '').split('\n').map((s) => s.trim()).filter(Boolean),
     }));
+    const token = (typeof window !== 'undefined' && localStorage.getItem('blinkManage:' + username)) || '';
     const res = await fetch('/api/creator/tiers', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, tiers: clean }),
+      body: JSON.stringify({ username, token, tiers: clean }),
     }).then((r) => r.json()).catch(() => ({ ok: false }));
     setSaved(res.ok ? 'saved' : 'error');
     setTimeout(() => setSaved(''), 2500);
