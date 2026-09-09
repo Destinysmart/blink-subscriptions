@@ -36,10 +36,32 @@ export default function SubscribePanel({ creator, rate }) {
   const [pay, setPay] = useState(null);
   const [paidUntil, setPaidUntil] = useState(null);
   const [error, setError] = useState('');
+  const [checking, setChecking] = useState(false);
   const poll = useRef(null);
-  useEffect(() => () => clearInterval(poll.current), []);
+  const subIdRef = useRef(null);
 
-  function reset() { clearInterval(poll.current); setStep('pick'); setSel(null); setPay(null); setPaidUntil(null); setError(''); }
+  // shared status check — used by the interval, by regaining focus, and by the manual button
+  async function checkStatus() {
+    const subId = subIdRef.current;
+    if (!subId) return;
+    setChecking(true);
+    try {
+      const st = await fetch(`/api/pay/status?subId=${subId}`).then((r) => r.json());
+      if (st.status === 'PAID') { clearInterval(poll.current); setPaidUntil(st.paidUntil); setStep('done'); }
+      else if (st.status === 'EXPIRED') { clearInterval(poll.current); setError('The invoice expired. Start again.'); }
+    } catch {}
+    setChecking(false);
+  }
+
+  // re-check the instant the tab regains focus (mobile pauses timers while you're in your wallet app)
+  useEffect(() => {
+    const onWake = () => { if (subIdRef.current && document.visibilityState === 'visible') checkStatus(); };
+    document.addEventListener('visibilitychange', onWake);
+    window.addEventListener('focus', onWake);
+    return () => { document.removeEventListener('visibilitychange', onWake); window.removeEventListener('focus', onWake); clearInterval(poll.current); };
+  }, []);
+
+  function reset() { clearInterval(poll.current); subIdRef.current = null; setStep('pick'); setSel(null); setPay(null); setPaidUntil(null); setError(''); }
 
   async function proceed() {
     if (creator.demo) { setStep('demo'); return; }
@@ -56,13 +78,9 @@ export default function SubscribePanel({ creator, rate }) {
       const data = await res.json();
       if (!data.ok) { setError(data.error || 'Could not create invoice'); return; }
       setPay(data);
-      poll.current = setInterval(async () => {
-        try {
-          const st = await fetch(`/api/pay/status?subId=${data.subId}`).then((r) => r.json());
-          if (st.status === 'PAID') { clearInterval(poll.current); setPaidUntil(st.paidUntil); setStep('done'); }
-          else if (st.status === 'EXPIRED') { clearInterval(poll.current); setError('The invoice expired. Start again.'); }
-        } catch {}
-      }, 3000);
+      subIdRef.current = data.subId;
+      clearInterval(poll.current);
+      poll.current = setInterval(checkStatus, 3000);
     } catch (e) { setError(String(e.message)); }
   }
 
@@ -130,6 +148,7 @@ export default function SubscribePanel({ creator, rate }) {
               <button className="btn ghost" style={{ flex: 1 }} onClick={() => navigator.clipboard?.writeText(pay.paymentRequest)}>Copy invoice</button>
             </div>
             <p style={{ color: 'var(--faint)', fontSize: 12, marginTop: 14 }}>Waiting for payment — updates automatically.</p>
+            <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={checkStatus} disabled={checking}>{checking ? 'Checking…' : "I've paid — check now"}</button>
           </>
         )}
         <button className="btn ghost" style={{ marginTop: 6 }} onClick={reset}>← back to plans</button>
