@@ -9,8 +9,8 @@ export default async function Embed({ params }) {
   if (!creator) return <div style={{ padding: 16, color: '#999', fontFamily: 'sans-serif' }}>Not found.</div>;
 
   return (
-    <div data-theme={creator.theme || 'dark'}>
-      <style>{'body{background:transparent;margin:0}'}</style>
+    <div id="blink-embed-root" data-theme={creator.theme || 'dark'}>
+      <style>{'html,body{background:transparent;margin:0;min-height:0}'}</style>
       <div className="panel" style={{ margin: 0 }}>
         <div className="pb">
           <SubscribePanel creator={creator} rate={SATS_PER_USD} />
