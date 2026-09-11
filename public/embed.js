@@ -17,6 +17,7 @@
     iframe.title = 'Subscribe';
     iframe.setAttribute('scrolling', 'no');
     iframe.setAttribute('loading', 'lazy');
+    iframe.setAttribute('allow', 'clipboard-write ' + origin);
     iframe.style.cssText = 'width:100%;border:0;overflow:hidden;min-height:420px;color-scheme:normal;';
     el.innerHTML = '';
     el.appendChild(iframe);

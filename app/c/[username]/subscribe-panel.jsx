@@ -1,6 +1,20 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 
+// Copy that survives cross-origin iframes: try the async Clipboard API, fall back
+// to a hidden textarea + execCommand, and never throw an uncaught rejection.
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
+  } catch {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); document.body.removeChild(ta); return ok;
+  } catch { return false; }
+}
+
 function view(tier, cycle, rate) {
   const amt = tier[cycle] || {};
   const isSats = tier.display === 'sats';
@@ -37,6 +51,7 @@ export default function SubscribePanel({ creator, rate }) {
   const [paidUntil, setPaidUntil] = useState(null);
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(false);
+  const [copied, setCopied] = useState(false);
   const poll = useRef(null);
   const subIdRef = useRef(null);
 
@@ -145,7 +160,7 @@ export default function SubscribePanel({ creator, rate }) {
             <img src={pay.qr} alt="Lightning invoice" width={220} height={220} style={{ borderRadius: 12, margin: '4px auto 14px', display: 'block', background: '#fff', padding: 8 }} />
             <div style={{ display: 'flex', gap: 8 }}>
               <a className="btn primary" style={{ flex: 1 }} href={`lightning:${pay.paymentRequest}`}>Open in wallet</a>
-              <button className="btn ghost" style={{ flex: 1 }} onClick={() => navigator.clipboard?.writeText(pay.paymentRequest)}>Copy invoice</button>
+              <button className="btn ghost" style={{ flex: 1 }} onClick={async () => { const ok = await copyText(pay.paymentRequest); if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1500); } }}>{copied ? 'Copied' : 'Copy invoice'}</button>
             </div>
             <p style={{ color: 'var(--faint)', fontSize: 12, marginTop: 14 }}>Waiting for payment — updates automatically.</p>
             <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={checkStatus} disabled={checking}>{checking ? 'Checking…' : "I've paid — check now"}</button>
