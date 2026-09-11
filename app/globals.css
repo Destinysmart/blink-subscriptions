@@ -118,12 +118,12 @@ tr:last-child td{border-bottom:0}
 .pill.expired{background:rgba(220,38,38,.16);color:var(--error)}
 .pill.pending{background:rgba(255,173,13,.16);color:var(--accent)}
 .pill.canceled{background:rgba(148,148,148,.16);color:var(--faint)}
-.feed{display:flex;flex-direction:column}
-.ev{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.feed{display:flex;flex-direction:column;min-width:0}
+.ev{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px;min-width:0}
 .ev:last-child{border-bottom:0}
-.ev .etype{font-family:var(--mono);font-size:12px;padding:3px 8px;border-radius:6px;background:var(--panel2);color:var(--dim);white-space:nowrap}
+.ev .etype{flex:0 0 auto;font-family:var(--mono);font-size:12px;padding:3px 8px;border-radius:6px;background:var(--panel2);color:var(--dim);white-space:nowrap}
 .ev .etype.paid{color:var(--green)}
-.ev .ewho{color:var(--ink)} .ev .edetail{color:var(--faint);margin-left:auto;font-size:12px}
+.ev .ewho{color:var(--ink);flex:1 1 auto;min-width:0;overflow-wrap:anywhere} .ev .edetail{color:var(--faint);margin-left:auto;font-size:12px;white-space:nowrap;flex:0 0 auto}
 .grid2{display:grid;grid-template-columns:1fr;gap:16px}
 @media(min-width:820px){.grid2{grid-template-columns:minmax(0,1fr) 320px}}
 .empty{color:var(--faint);font-size:14px;padding:20px 0}
