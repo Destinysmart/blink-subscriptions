@@ -6,7 +6,7 @@ export async function GET(req) {
   if (!subId) return NextResponse.json({ status: 'PENDING' });
 
   const { getSubById, activateSub } = await import('@/lib/db/local.mjs');
-  const { invoiceStatusByHash } = await import('@/lib/blink.mjs');
+  const { invoiceStatus } = await import('@/lib/blink.mjs');
 
   let sub;
   try {
@@ -18,14 +18,14 @@ export async function GET(req) {
   if (!sub) return NextResponse.json({ status: 'PENDING', debug: 'no sub for id ' + subId });
   if (sub.status === 'active') return NextResponse.json({ status: 'PAID', paidUntil: sub.paid_until });
 
-  let status;
+  let status, byReq, byHash;
   try {
-    status = await invoiceStatusByHash(sub.payment_hash);
+    ({ status, byReq, byHash } = await invoiceStatus({ paymentHash: sub.payment_hash, paymentRequest: sub.payment_request }));
   } catch (e) {
-    console.error('[pay/status] invoiceStatusByHash failed', sub.payment_hash, e);
-    return NextResponse.json({ status: 'PENDING', debug: 'statusByHash: ' + String(e.message) });
+    console.error('[pay/status] invoiceStatus failed', sub.payment_hash, e);
+    return NextResponse.json({ status: 'PENDING', debug: 'invoiceStatus: ' + String(e.message) });
   }
-  console.log('[pay/status]', subId, 'hash', sub.payment_hash, '->', status);
+  console.log('[pay/status]', subId, 'byReq', byReq, 'byHash', byHash, '->', status);
 
   if (status === 'PAID') {
     try {
