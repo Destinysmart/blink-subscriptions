@@ -5,8 +5,7 @@ export async function GET(req) {
   const subId = new URL(req.url).searchParams.get('subId');
   if (!subId) return NextResponse.json({ status: 'PENDING' });
 
-  const { getSubById, activateSub } = await import('@/lib/db/local.mjs');
-  const { invoiceStatus } = await import('@/lib/blink.mjs');
+  const { getSubById, settlePendingSub } = await import('@/lib/db/local.mjs');
 
   let sub;
   try {
@@ -16,25 +15,15 @@ export async function GET(req) {
     return NextResponse.json({ status: 'PENDING', debug: 'getSubById: ' + String(e.message) });
   }
   if (!sub) return NextResponse.json({ status: 'PENDING', debug: 'no sub for id ' + subId });
-  if (sub.status === 'active') return NextResponse.json({ status: 'PAID', paidUntil: sub.paid_until });
 
-  let status, byReq, byHash;
+  let r;
   try {
-    ({ status, byReq, byHash } = await invoiceStatus({ paymentHash: sub.payment_hash, paymentRequest: sub.payment_request }));
+    r = await settlePendingSub(sub);
   } catch (e) {
-    console.error('[pay/status] invoiceStatus failed', sub.payment_hash, e);
-    return NextResponse.json({ status: 'PENDING', debug: 'invoiceStatus: ' + String(e.message) });
+    console.error('[pay/status] settlePendingSub failed', subId, e);
+    return NextResponse.json({ status: 'PENDING', debug: 'settle: ' + String(e.message) });
   }
-  console.log('[pay/status]', subId, 'byReq', byReq, 'byHash', byHash, '->', status);
-
-  if (status === 'PAID') {
-    try {
-      const { paidUntil } = await activateSub(subId);
-      return NextResponse.json({ status: 'PAID', paidUntil });
-    } catch (e) {
-      console.error('[pay/status] activateSub failed', subId, e);
-      return NextResponse.json({ status: 'PENDING', debug: 'activateSub: ' + String(e.message) });
-    }
-  }
-  return NextResponse.json({ status });
+  console.log('[pay/status]', subId, 'byReq', r.byReq, 'byHash', r.byHash, 'via', r.via, '->', r.status);
+  if (r.status === 'PAID') return NextResponse.json({ status: 'PAID', paidUntil: r.paidUntil, via: r.via });
+  return NextResponse.json({ status: r.status, debug: r.error, byReq: r.byReq, byHash: r.byHash, via: r.via });
 }
