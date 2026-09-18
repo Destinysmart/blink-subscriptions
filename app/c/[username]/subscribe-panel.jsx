@@ -15,6 +15,25 @@ async function copyText(text) {
   } catch { return false; }
 }
 
+// Pending-invoice memory, in the visitor's own browser only. Lets a reload, an
+// iframe refresh, or a tab switch resume the exact invoice the visitor already
+// scanned, instead of minting a new one and orphaning their payment. All access
+// is guarded: storage can be unavailable (private mode, sandboxed iframes).
+const INVOICE_TTL_MS = 60 * 60 * 1000; // matches the invoice's 1h lifetime
+const pendingKey = (username) => `blinksub:pending:${username}`;
+function loadPending(username) {
+  try {
+    const raw = localStorage.getItem(pendingKey(username));
+    if (!raw) return null;
+    const p = JSON.parse(raw);
+    if (!p || !p.subId || !p.paymentRequest) return null;
+    if (Date.now() - (p.createdAt || 0) > INVOICE_TTL_MS) { localStorage.removeItem(pendingKey(username)); return null; }
+    return p;
+  } catch { return null; }
+}
+function savePending(username, p) { try { localStorage.setItem(pendingKey(username), JSON.stringify(p)); } catch {} }
+function clearPending(username) { try { localStorage.removeItem(pendingKey(username)); } catch {} }
+
 function view(tier, cycle, rate) {
   const amt = tier[cycle] || {};
   const isSats = tier.display === 'sats';
@@ -41,6 +60,7 @@ function satsOf(tier, cycle, rate) {
 }
 function fmtDate(iso) { try { return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }); } catch { return iso; } }
 const validEmail = (e) => /.+@.+\..+/.test(e);
+const tail = (pr) => (pr ? pr.slice(-8) : '');
 
 export default function SubscribePanel({ creator, rate }) {
   const [cycle, setCycle] = useState('monthly');
@@ -53,50 +73,92 @@ export default function SubscribePanel({ creator, rate }) {
   const [checking, setChecking] = useState(false);
   const [copied, setCopied] = useState(false);
   const poll = useRef(null);
+  const expiry = useRef(null);
   const subIdRef = useRef(null);
+  const inflight = useRef(false);
 
-  // shared status check — used by the interval, by regaining focus, and by the manual button
-  async function checkStatus() {
-    const subId = subIdRef.current;
-    if (!subId) return;
-    setChecking(true);
-    try {
-      const st = await fetch(`/api/pay/status?subId=${subId}`).then((r) => r.json());
-      if (st.status === 'PAID') { clearInterval(poll.current); setPaidUntil(st.paidUntil); setStep('done'); }
-      else if (st.status === 'EXPIRED') { clearInterval(poll.current); setError('The invoice expired. Start again.'); }
-    } catch {}
-    setChecking(false);
+  function stopPolling() {
+    clearInterval(poll.current); poll.current = null;
+    clearTimeout(expiry.current); expiry.current = null;
   }
 
-  // re-check the instant the tab regains focus (mobile pauses timers while you're in your wallet app)
+  // shared status check — used by the interval, by regaining focus, and by the manual button
+  async function checkStatus(manual = false) {
+    const subId = subIdRef.current;
+    if (!subId) return;
+    if (manual) setChecking(true);
+    try {
+      const st = await fetch(`/api/pay/status?subId=${subId}`).then((r) => r.json());
+      if (st.status === 'PAID') { stopPolling(); clearPending(creator.blink_username); setPaidUntil(st.paidUntil); setStep('done'); }
+      else if (st.status === 'EXPIRED') { stopPolling(); clearPending(creator.blink_username); setError('The invoice expired. Start again.'); }
+    } catch {}
+    finally { if (manual) setChecking(false); }
+  }
+
+  // Watch one invoice: poll every 3s, and stop when it can no longer be paid.
+  function watch(subId, createdAt) {
+    subIdRef.current = subId;
+    stopPolling();
+    poll.current = setInterval(() => checkStatus(false), 3000);
+    const remaining = Math.max(0, INVOICE_TTL_MS - (Date.now() - createdAt)) + 60000;
+    expiry.current = setTimeout(() => {
+      if (!poll.current) return;
+      stopPolling(); clearPending(creator.blink_username);
+      setError((e) => e || 'The invoice expired. Start again.');
+    }, remaining);
+    checkStatus(false); // check right away, not only after the first 3s
+  }
+
+  // On mount: resume a pending invoice from this browser if there is one, so the
+  // visitor is never asked to pay twice after a reload or tab switch.
   useEffect(() => {
-    const onWake = () => { if (subIdRef.current && document.visibilityState === 'visible') checkStatus(); };
+    const p = loadPending(creator.blink_username);
+    if (p) {
+      const tier = (creator.tiers || []).find((t) => t.name === p.tierName) || null;
+      if (tier) {
+        setSel(tier); setCycle(p.cycle || 'monthly'); setEmail(p.email || '');
+        setPay({ subId: p.subId, paymentRequest: p.paymentRequest, qr: p.qr });
+        setStep('pay');
+        watch(p.subId, p.createdAt || Date.now());
+      } else {
+        clearPending(creator.blink_username);
+      }
+    }
+    // re-check the instant the tab regains focus (mobile pauses timers while you're in your wallet app)
+    const onWake = () => { if (subIdRef.current && document.visibilityState === 'visible') checkStatus(false); };
     document.addEventListener('visibilitychange', onWake);
     window.addEventListener('focus', onWake);
-    return () => { document.removeEventListener('visibilitychange', onWake); window.removeEventListener('focus', onWake); clearInterval(poll.current); };
+    return () => { document.removeEventListener('visibilitychange', onWake); window.removeEventListener('focus', onWake); stopPolling(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function reset() { clearInterval(poll.current); subIdRef.current = null; setStep('pick'); setSel(null); setPay(null); setPaidUntil(null); setError(''); }
+  function reset() {
+    stopPolling(); subIdRef.current = null; clearPending(creator.blink_username);
+    setStep('pick'); setSel(null); setPay(null); setPaidUntil(null); setError('');
+  }
 
   async function proceed() {
+    if (inflight.current) return; // one tap, one invoice
     if (creator.demo) { setStep('demo'); return; }
     if (!validEmail(email)) { setError('Enter a valid email.'); return; }
     setError('');
-    if (sel.free) {
-      await fetch('/api/join-free', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: creator.blink_username, tier: sel.name, email }) });
-      setStep('joined'); return;
-    }
-    setStep('pay'); setPay(null);
+    inflight.current = true;
     try {
+      if (sel.free) {
+        await fetch('/api/join-free', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: creator.blink_username, tier: sel.name, email }) });
+        setStep('joined'); return;
+      }
+      setStep('pay'); setPay(null);
       const res = await fetch('/api/pay/create', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: creator.blink_username, payout: creator.payout_username || creator.blink_username, tier: sel.name, sats: satsOf(sel, cycle, rate), cycle, email }) });
       const data = await res.json();
       if (!data.ok) { setError(data.error || 'Could not create invoice'); return; }
+      const createdAt = Date.now();
       setPay(data);
-      subIdRef.current = data.subId;
-      clearInterval(poll.current);
-      poll.current = setInterval(checkStatus, 3000);
+      savePending(creator.blink_username, { subId: data.subId, paymentRequest: data.paymentRequest, qr: data.qr, tierName: sel.name, cycle, email, createdAt });
+      watch(data.subId, createdAt);
     } catch (e) { setError(String(e.message)); }
+    finally { inflight.current = false; }
   }
 
   if (step === 'demo') {
@@ -162,8 +224,11 @@ export default function SubscribePanel({ creator, rate }) {
               <a className="btn primary" style={{ flex: 1 }} href={`lightning:${pay.paymentRequest}`}>Open in wallet</a>
               <button className="btn ghost" style={{ flex: 1 }} onClick={async () => { const ok = await copyText(pay.paymentRequest); if (ok) { setCopied(true); setTimeout(() => setCopied(false), 1500); } }}>{copied ? 'Copied' : 'Copy invoice'}</button>
             </div>
-            <p style={{ color: 'var(--faint)', fontSize: 12, marginTop: 14 }}>Waiting for payment — updates automatically.</p>
-            <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={checkStatus} disabled={checking}>{checking ? 'Checking…' : "I've paid — check now"}</button>
+            <p style={{ color: 'var(--faint)', fontSize: 12, marginTop: 14 }}>
+              Waiting for payment — updates automatically.
+              <span style={{ display: 'block', fontFamily: 'var(--mono)', opacity: 0.7, marginTop: 4 }}>invoice …{tail(pay.paymentRequest)}</span>
+            </p>
+            <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => checkStatus(true)} disabled={checking}>{checking ? 'Checking…' : "I've paid — check now"}</button>
           </>
         )}
         <button className="btn ghost" style={{ marginTop: 6 }} onClick={reset}>← back to plans</button>
