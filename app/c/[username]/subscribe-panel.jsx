@@ -34,6 +34,20 @@ function loadPending(username) {
 function savePending(username, p) { try { localStorage.setItem(pendingKey(username), JSON.stringify(p)); } catch {} }
 function clearPending(username) { try { localStorage.removeItem(pendingKey(username)); } catch {} }
 
+// Active-membership memory, also only in the visitor's browser. A paid reader who
+// comes back within their term sees "you're subscribed" instead of the paywall.
+const activeKey = (username) => `blinksub:active:${username}`;
+function loadActive(username) {
+  try {
+    const a = JSON.parse(localStorage.getItem(activeKey(username)) || 'null');
+    if (!a || !a.activeUntil) return null;
+    if (new Date(a.activeUntil).getTime() <= Date.now()) { localStorage.removeItem(activeKey(username)); return null; }
+    return a;
+  } catch { return null; }
+}
+function saveActive(username, a) { try { localStorage.setItem(activeKey(username), JSON.stringify(a)); } catch {} }
+function clearActive(username) { try { localStorage.removeItem(activeKey(username)); } catch {} }
+
 function view(tier, cycle, rate) {
   const amt = tier[cycle] || {};
   const isSats = tier.display === 'sats';
@@ -89,7 +103,7 @@ export default function SubscribePanel({ creator, rate }) {
     if (manual) setChecking(true);
     try {
       const st = await fetch(`/api/pay/status?subId=${subId}`).then((r) => r.json());
-      if (st.status === 'PAID') { stopPolling(); clearPending(creator.blink_username); setPaidUntil(st.paidUntil); setStep('done'); }
+      if (st.status === 'PAID') { stopPolling(); clearPending(creator.blink_username); saveActive(creator.blink_username, { activeUntil: st.paidUntil, tierName: sel?.name || '', email }); setPaidUntil(st.paidUntil); setStep('done'); }
       else if (st.status === 'EXPIRED') { stopPolling(); clearPending(creator.blink_username); setError('The invoice expired. Start again.'); }
     } catch {}
     finally { if (manual) setChecking(false); }
@@ -112,6 +126,8 @@ export default function SubscribePanel({ creator, rate }) {
   // On mount: resume a pending invoice from this browser if there is one, so the
   // visitor is never asked to pay twice after a reload or tab switch.
   useEffect(() => {
+    const a = loadPending(creator.blink_username) ? null : loadActive(creator.blink_username);
+    if (a) { setPaidUntil(a.activeUntil); setEmail(a.email || ''); setSel({ name: a.tierName }); setStep('returning'); }
     const p = loadPending(creator.blink_username);
     if (p) {
       const tier = (creator.tiers || []).find((t) => t.name === p.tierName) || null;
@@ -182,6 +198,17 @@ export default function SubscribePanel({ creator, rate }) {
         <div className="big">✓</div><div className="t">You&apos;re on the list</div>
         <p style={{ color: 'var(--dim)', fontSize: 14, margin: '8px auto 0', maxWidth: '38ch' }}>We&apos;ll send the newsletter to <b>{email}</b>.</p>
         <button className="btn ghost" style={{ maxWidth: 240, margin: '16px auto 0' }} onClick={reset}>Back</button>
+      </div>
+    );
+  }
+  if (step === 'returning') {
+    return (
+      <div className="done">
+        <div className="big">✓</div><div className="t">You&apos;re subscribed</div>
+        <p style={{ color: 'var(--dim)', fontSize: 14, margin: '8px auto 0', maxWidth: '40ch' }}>
+          {sel?.name ? `${sel.name} to ` : ''}{creator.brand}, active until <b>{fmtDate(paidUntil)}</b> on this device.{email ? <> The newsletter goes to <b>{email}</b>.</> : null}
+        </p>
+        <button className="btn ghost" style={{ maxWidth: 240, margin: '16px auto 0' }} onClick={() => { clearActive(creator.blink_username); reset(); }}>Renew or change plan</button>
       </div>
     );
   }

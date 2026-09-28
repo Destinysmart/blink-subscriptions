@@ -19,6 +19,76 @@ function ago(iso) {
   return h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
 }
 
+// Forward-don't-store. Subscribers go to the creator's own tool the moment a
+// payment lands, and we stop holding their email. This card is where a verified
+// creator points that firehose. Free for everyone; no unlock.
+function DestinationCard({ username, initial }) {
+  const [url, setUrl] = useState(initial?.url || '');
+  const [secret, setSecret] = useState('');
+  const [saved, setSaved] = useState(!!initial?.set);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [held, setHeld] = useState(initial?.held || 0);
+  const token = typeof window !== 'undefined' ? localStorage.getItem('blinkManage:' + username) : null;
+
+  async function flush() {
+    setBusy(true); setMsg('');
+    const r = await fetch('/api/advanced/connector', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, token, flush: true }) }).then((x) => x.json()).catch(() => ({ error: 'network' }));
+    setBusy(false);
+    if (r && r.ok) { setHeld(r.remaining || 0); setMsg(`Forwarded ${r.forwarded} to your destination${r.failed ? `, ${r.failed} could not be delivered and are still held` : '. We hold none of them now.'}`); }
+    else setMsg(r?.error === 'no_destination' ? 'Set and save a destination first.' : (r?.error || 'Could not forward'));
+  }
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`/api/advanced/connector?u=${encodeURIComponent(username)}&t=${encodeURIComponent(token)}`)
+      .then((r) => r.json()).then((c) => { if (c && c.secret) setSecret(c.secret); }).catch(() => {});
+  }, [username, token]);
+
+  async function save() {
+    setBusy(true); setMsg('');
+    const r = await fetch('/api/advanced/connector', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, token, webhookUrl: url.trim() }) }).then((x) => x.json()).catch(() => ({ error: 'network' }));
+    setBusy(false);
+    if (r && r.ok) { setSaved(!!url.trim()); setMsg(url.trim() ? 'Saved. New subscribers now go straight to you.' : 'Cleared. We will hold emails until you set a destination.'); }
+    else setMsg(r?.error === 'unauthorized' ? 'Session expired. Reload and verify again.' : (r?.error || 'Could not save'));
+  }
+
+  return (
+    <div className="panel" style={{ marginTop: 16 }}>
+      <div className="ph"><h2>Where do your subscribers go?</h2><span className={`tag ${saved ? '' : 'warn'}`}>{saved ? 'forwarding on' : 'not set'}</span></div>
+      <div className="pb">
+        <p style={{ color: 'var(--dim)', fontSize: 14, marginTop: 0 }}>
+          Your subscribers belong to you, not to us. The moment someone pays or joins free, we send their email, tier, and renewal date to a URL you control, then we stop holding it. Point this at your newsletter tool, a Zapier or n8n hook, or a Google Sheet.
+        </p>
+        {!saved && (
+          <p style={{ color: 'var(--warn, #f5b642)', fontSize: 13 }}>
+            Until you set a destination, subscriber emails sit in this dashboard's database. Set one so they go to you.
+          </p>
+        )}
+        <label>Destination URL</label>
+        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://hooks.zapier.com/… or https://yoursite.com/api/subscribers" style={{ fontFamily: 'var(--mono)', fontSize: 13 }} />
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button className="btn grad" onClick={save} disabled={busy || !token}>{busy ? 'Saving…' : 'Save destination'}</button>
+          {msg && <span style={{ fontSize: 13, color: 'var(--dim)' }}>{msg}</span>}
+        </div>
+        {saved && held > 0 && (
+          <div style={{ marginTop: 12, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 8, fontSize: 13 }}>
+            We are still holding <b>{held}</b> subscriber email{held === 1 ? '' : 's'} from before you set a destination.
+            <div style={{ marginTop: 8 }}><button className="btn ghost sm" onClick={flush} disabled={busy}>{busy ? 'Forwarding…' : 'Forward them to my destination and stop holding them'}</button></div>
+          </div>
+        )}
+        {secret && (
+          <div style={{ marginTop: 14, fontSize: 12, color: 'var(--faint)' }}>
+            Every POST is signed with header <code style={{ fontFamily: 'var(--mono)' }}>Blink-Signature</code> (HMAC-SHA256 of the body). Your signing secret:
+            <div style={{ fontFamily: 'var(--mono)', fontSize: 12, marginTop: 4, wordBreak: 'break-all', color: 'var(--ink)' }}>{secret}</div>
+            Events: <code style={{ fontFamily: 'var(--mono)' }}>subscription.paid</code>, <code style={{ fontFamily: 'var(--mono)' }}>subscription.renewed</code>, <code style={{ fontFamily: 'var(--mono)' }}>subscription.created</code> (free), <code style={{ fontFamily: 'var(--mono)' }}>subscription.expiring</code>. Each carries a stable <code style={{ fontFamily: 'var(--mono)' }}>subscriberId</code> so your tool can match renewals to the original signup.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DashboardInner() {
   const params = useSearchParams();
   const [uInput, setUInput] = useState(params.get('u') || '');
@@ -130,28 +200,7 @@ function DashboardInner() {
             <div className="stat"><div className="k">Expired</div><div className="v">{stats.pastDue}</div></div>
           </div>
 
-          <div className="panel" style={{ marginTop: 16 }}>
-            <div className="ph"><h2>Subscribers</h2><span className="tag">{subs.length} total · {stats.free} free</span></div>
-            <div className="pb" style={{ paddingTop: 6 }}>
-              {subs.length === 0 ? (
-                <div className="empty">No subscribers yet. Share your subscribe page to get your first.</div>
-              ) : (
-                <table>
-                  <thead><tr><th>Subscriber</th><th>Tier</th><th>Renews</th><th>Status</th></tr></thead>
-                  <tbody>
-                    {subs.map((s, i) => (
-                      <tr key={s.id || i}>
-                        <td><div className="contact">{s.contact}</div><div className="sub">{s.sats.toLocaleString()} sats/mo</div></td>
-                        <td>{s.tier}</td>
-                        <td>{fmtDue(s.nextDue)}</td>
-                        <td><span className={`pill ${s.kind === 'free' ? 'free' : s.status}`}>{s.kind === 'free' ? 'free' : s.status}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
+          <DestinationCard username={creator.blink_username} initial={data?.dashboard?.destination} />
 
           <div className="panel" style={{ marginTop: 16 }}>
             <div className="ph"><h2>Embed on your site</h2><span className="tag">copy &amp; paste</span></div>

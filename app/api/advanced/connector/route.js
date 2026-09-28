@@ -8,9 +8,10 @@ export async function GET(req) {
   return NextResponse.json(c);
 }
 export async function POST(req) {
-  const { username, token, webhookUrl, rotate } = await req.json();
-  const { setWebhookUrl, rotateSecret } = await import('@/lib/db/local.mjs');
+  const { username, token, webhookUrl, rotate, flush } = await req.json();
+  const { setWebhookUrl, rotateSecret, flushHeldSubscribers } = await import('@/lib/db/local.mjs');
   if (rotate) { const r = await rotateSecret(username, token); return r ? NextResponse.json(r) : NextResponse.json({ error: 'unauthorized' }, { status: 401 }); }
+  if (flush) { const r = await flushHeldSubscribers(username, token); return r ? NextResponse.json(r) : NextResponse.json({ error: 'unauthorized' }, { status: 401 }); }
   const r = await setWebhookUrl(username, token, webhookUrl);
   return r ? NextResponse.json(r) : NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 }
